@@ -1,19 +1,28 @@
 # Cloudcom User Sync — Field Criteria
 
-This document describes the business logic used when syncing a broker's profile from the Byit CRM to the Cloudcom platform.
+This document describes the business logic used when syncing a broker's profile from the Byit CRM to the Cloudcom platform. It is intended for non-technical readers such as operations, product, and CRM teams.
 
 ---
 
 ## Fields Synced Directly
 
-These fields are copied as-is from the broker's profile without any transformation.
+These fields are fetched from their source and sent to Cloudcom without transformation. If a field has no value at the time of sync, it is left blank.
 
-| Cloudcom Field | Source |
+| Cloudcom Field | Source
 |---|---|
-| Name | The broker's full name |
-| Phone Number | The broker's registered phone number |
-| Email | The broker's registered email address |
-| City | The English name of the city linked to the broker's profile |
+| Name | The broker's full name
+| Phone Number | The broker's registered phone number
+| Email | The broker's registered email address
+| City | The English name of the city linked to the broker's profile
+| Campaign Status | Whether the broker appears as a member in any active campaign — **Subscribed** if found, **Not Subscribed** if not
+
+The following fields are also synced directly from their source, but may be blank at the time of sync depending on data availability or whether the field has been filled in yet.
+
+| Cloudcom Field | Source | When it may be blank |
+|---|---|---|
+| Age | A dedicated Age field on the broker's CRM profile | New field — blank for brokers registered before it was introduced until manually updated |
+| Gender | A dedicated Gender field on the broker's CRM profile | New field — blank for brokers registered before it was introduced; the broker's name can be reviewed manually or via an AI model as a fallback to infer gender |
+| Preferred Areas | The English name of the Primary Area on the broker's A-Team record | Blank if the broker has no team assignment or the team has no primary area set |
 
 ---
 
@@ -126,14 +135,67 @@ We check the broker's SMS preference setting.
 
 ---
 
+### Age
+
+**Possible values:** Any numeric age value
+
+**How it is determined:**
+
+A new Age field will be added to the broker's profile in the CRM. This field will be filled in manually for newly registered brokers going forward. When syncing, we check whether the age has been entered:
+
+- If the age is filled → it is sent to Cloudcom as-is
+- If the age is not filled → the field is left blank
+
+> Brokers registered before this field was introduced will not have an age value until it is manually updated.
+
+---
+
+### Gender
+
+**Possible values:** Male, Female
+
+**How it is determined:**
+
+A new Gender field will be added to the broker's profile in the CRM. This field will be filled in manually for newly registered brokers going forward. When syncing, we check in this order:
+
+1. If the gender field is filled → use it directly
+2. If the gender field is empty → the broker's name can be reviewed — either manually by the operations team or through an AI model — to infer gender from the name
+3. If neither option yields a result → the field is left blank
+
+> The name-based inference is an optional fallback and is not guaranteed to be accurate for all names.
+
+---
+
+### Preferred Areas
+
+**Possible values:** Any area name (e.g. East, West, Coastal)
+
+**How it is determined:**
+
+We look up the broker's team assignment (A-Team record) and check the **Primary Area** field on that record. If a primary area is found, its English name is sent to Cloudcom.
+
+- If the broker has a team with a primary area assigned → the area's English name is used
+- If the broker has no team assignment, or the team has no primary area set → the field is left blank
+
+---
+
+### Campaign Status
+
+**Possible values:** Subscribed, Not Subscribed
+
+**How it is determined:**
+
+We check the campaign membership records to see whether the broker is currently subscribed to any campaign.
+
+- If the broker appears as a member in at least one active campaign → **Subscribed**
+- If no campaign membership is found → **Not Subscribed**
+
+---
+
 ## Fields Not Implemented
 
 The following fields from the Cloudcom requirements could not be implemented because the data is not available in the Byit system.
 
 | Cloudcom Field | Reason Not Implemented |
 |---|---|
-| Age | Not collected from brokers |
-| Gender | Not collected from brokers |
-| Preferred Areas | Not stored in the system |
-| Campaign Status | No subscription data available |
 | Device Location | Not tracked (Brokerage / Developer / Compound distinction is not stored) |
